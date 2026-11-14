@@ -1,13 +1,13 @@
-# Development notes: Isometric Renders 26.2 port
+# Development notes: Isometric Renders 26.3 port
 
-Unofficial port of [glisco03/isometric-renders](https://github.com/glisco03/isometric-renders) (branch `1.21.4`, MIT)
-to **Minecraft 26.2**, Fabric. Runtime deps: Fabric API 0.161.0+26.2, owo-lib 0.13.1+26.2 (owo only exists for 26.2,
-which is why the port targets 26.2).
+Unofficial port of [gliscowo/isometric-renders](https://github.com/gliscowo/isometric-renders) (branch `1.21.4`, MIT)
+to **Minecraft 26.3**, Fabric (Loader 0.20.1, Fabric API 0.166.2+26.3). There is no upstream owo-lib build for 26.3,
+so a slimmed owo 0.13.1 source port lives in `libs/` and is nested into the mod jar (see [libs/README.md](libs/README.md)).
 
 ## Status
 
-**Verified** with the client gametest and in-game: item / block (+ block entities) / entity / tooltip / area / item atlas
-renders, export to PNG, area selection box, HUD, boots with Sodium.
+**Verified** with the client gametest and in-game on 26.3: item / block (+ block entities) / entity / tooltip / area /
+item atlas renders, export to PNG, area selection box, HUD.
 
 **Port-only fixes and additions:**
 - Exports un-premultiply alpha, so translucent blocks no longer come out washed out.
@@ -16,7 +16,7 @@ renders, export to PNG, area selection box, HUD, boots with Sodium.
 - Debug overlays in area renders: `render/DebugOverlays` runs the vanilla `DebugRenderer` and Carpet's
   `ShapesRenderer` with the main camera moved to the area's origin, then clips the gizmos to the area.
   Toggles under Mesh Controls. Carpet is optional (`compat/CarpetShapes` is only loaded when it's installed).
-  Carpet 26.2 itself doesn't draw Scarpet `label` shapes, so those don't show up in renders either.
+  Carpet itself doesn't draw Scarpet `label` shapes, so those don't show up in renders either.
 - gizmolib (a Scarpet extension that replaces `draw_shape`, unpublished): `compat/GizmoLibShapes` calls its client
   stores by reflection (`ShapeStore.emit`, `GhostBlocks` / `SolidFills` / `TextDisplays.submit`) with the camera at
   the area origin. Shape outlines are clipped like other gizmos; ghost blocks, solid fills and text aren't. Dev runs
@@ -38,13 +38,14 @@ renders, export to PNG, area selection box, HUD, boots with Sodium.
 - `-PwithLitematica` adds Litematica + malilib to dev and test runs (for building test scenes from schematics).
 
 **Not tested yet:** animation export (needs FFmpeg on PATH), batch renders, copy-to-clipboard, particles in renders,
-the `/isorender` commands typed in-game.
+the `/isorender` commands typed in-game. The Iris/Sodium dev runs (`-PwithShaders`) haven't been re-run on 26.3, and
+the release jar has only been exercised through the dev gametest so far.
 
 **Known differences from upstream:** tooltip renders use the classic purple tooltip look (26.x tooltips are GUI-only
 render state, so they're rebuilt from `submitText` + quads; bundle and map tooltip images aren't drawn). Player renders
 look players up via the client profile resolver, so they also work in multiplayer.
 
-## Architecture notes (26.2-specific, the non-obvious bits)
+## Architecture notes (26.3-specific, the non-obvious bits)
 
 - **26.x extracts the GUI before anything renders.** All GPU work (the preview, exports, clipboard) runs inside
   `render/PreviewRenderer` (a `PictureInPictureRenderer`, registered via Fabric's `PictureInPictureRendererRegistry`).
@@ -67,12 +68,16 @@ look players up via the client profile resolver, so they also work in multiplaye
 
 ## Rules
 
-1. Check real Minecraft source, never guess APIs: https://mcsrc.dev (version 26.2) or `./gradlew genSources`.
+1. Check real Minecraft source, never guess APIs: https://mcsrc.dev (version 26.3) or `./gradlew genSources`.
 2. Never use or copy code from WikiRenderer (skyblock-wiki/WikiRenderer), even though it's a 26.x fork of this mod.
-3. Owo-lib's own 26.2 source is a good reference for 26.2 rendering: `git clone -b 26.2 https://github.com/wisp-forest/owo-lib`
+3. The bundled owo port in `libs/` was derived from [wisp-forest/owo-lib](https://github.com/wisp-forest/owo-lib); its
+   source is the best reference for owo's rendering (see [libs/README.md](libs/README.md) for what was ported).
 4. After a change: build, run the gametest, **look at the screenshots** (zoom into exports if quality matters).
 
 ## Building and testing
+
+Builds need JDK 25 (Loom 1.17 requires 21+, the mod targets 25) — point `JAVA_HOME` at it if your default is older.
+The owo port and its deps are committed in `libs/`, so no separate owo download is needed.
 
 ```bash
 ./gradlew build                                                       # jar -> build/libs/
@@ -86,5 +91,6 @@ prefixing `LIBGL_ALWAYS_SOFTWARE=1`.
 
 ## Releasing
 
-Bump `mod_version` in `gradle.properties`, build, and attach `build/libs/IsometricRenders-<version>.jar` to a new
-GitHub release. Older releases stay up so any version can still be downloaded.
+Bump `mod_version` in `gradle.properties`, build with JDK 25, commit, tag `v<version>` (e.g. `v0.5.8+26.3`), push the
+branch and the tag, then attach `build/libs/IsometricRenders-<version>.jar` to a new GitHub release. Older releases
+stay up so any version can still be downloaded.
