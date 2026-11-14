@@ -1,20 +1,22 @@
 package io.wispforest.worldmesher;
 
 import com.google.common.collect.HashMultimap;
-import com.mojang.blaze3d.PrimitiveTopology;
-import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.ByteBufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.MeshData;
-import org.joml.Vector3f;
-import com.mojang.blaze3d.IndexType;
 import com.mojang.blaze3d.vertex.VertexSorting;
+import com.mojang.renderpearl.api.buffers.GpuBuffer;
+import com.mojang.renderpearl.api.pipeline.IndexType;
+import com.mojang.renderpearl.api.pipeline.PrimitiveTopology;
+import org.joml.Vector3f;
 import com.glisco.isometricrenders.compat.IrisCompat;
+import com.glisco.isometricrenders.render.RenderableDispatcher;
 import io.wispforest.worldmesher.render.FluidVertexConsumer;
 import io.wispforest.worldmesher.render.MeshRenderView;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.StagedVertexBuffer;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.client.renderer.block.BlockQuadOutput;
 import net.minecraft.client.renderer.block.FluidRenderer;
@@ -124,25 +126,29 @@ public class WorldMesh {
         modelView.pushMatrix();
         modelView.mul(transform);
 
-        // Enum order puts translucent last
+        // Sorting writes to the shared command encoder, which can't happen while a render pass is open
         this.bufferStorage.forEach((layer, uploaded) -> {
             if (layer.translucent()) this.resortIfNeeded(modelView, uploaded);
-            renderStartAction.run();
-
-            // The shared sequential buffer switches to int indices when it grows past 65k vertices,
-            // so its type has to be read after getBuffer, not cached at upload
-            var indices = uploaded.indices;
-            var indexType = uploaded.indexType;
-            if (indices == null) {
-                final var sequential = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS);
-                indices = sequential.getBuffer(uploaded.indexCount);
-                indexType = sequential.type();
-            }
-
-            renderTypeFor(layer).prepare().drawFromBuffer(uploaded.vertices, indices, indexType, 0, 0, uploaded.indexCount);
-
-            renderEndAction.run();
         });
+
+        try (var pass = RenderableDispatcher.createPass("WorldMesh")) {
+            // Enum order puts translucent last
+            this.bufferStorage.forEach((layer, uploaded) -> {
+                renderStartAction.run();
+
+                // The shared sequential buffer switches to int indices when it grows past 65k vertices,
+                // so its type has to be read after getBuffer, not cached at upload
+                var indexType = uploaded.indexType;
+                if (uploaded.indices == null) indexType = RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS).type();
+
+                renderTypeFor(layer).prepare().drawFromBuffer(
+                        new StagedVertexBuffer.ExecuteInfo(uploaded.vertices, uploaded.indices, indexType, 0, 0, uploaded.indexCount, PrimitiveTopology.QUADS),
+                        pass
+                );
+
+                renderEndAction.run();
+            });
+        }
 
         modelView.popMatrix();
     }
@@ -431,6 +437,8 @@ public class WorldMesh {
                                 : null;
 
                         var drawState = mesh.drawState();
+                        // Make sure the shared index buffer can hold this layer before it is used in a pass
+                        if (indices == null) RenderSystem.getSequentialBuffer(PrimitiveTopology.QUADS).getBuffer(drawState.indexCount());
                         this.bufferStorage.put(layer, new UploadedLayer(vertices, indices, drawState.indexType(), drawState.indexCount()));
                     }
                 });

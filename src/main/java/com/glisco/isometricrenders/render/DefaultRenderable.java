@@ -2,14 +2,15 @@ package com.glisco.isometricrenders.render;
 
 import com.glisco.isometricrenders.mixin.access.CameraInvoker;
 import com.glisco.isometricrenders.property.DefaultPropertyBundle;
-import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.buffers.Std140Builder;
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.renderpearl.api.buffers.GpuBuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeStorage;
 import net.minecraft.client.renderer.culling.Frustum;
+import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.state.level.ParticlesRenderState;
 import net.minecraft.world.entity.Entity;
@@ -61,22 +62,27 @@ public abstract class DefaultRenderable<P extends DefaultPropertyBundle> impleme
         // Particles and debug overlays are positioned relative to the
         // camera, so they need their own model view matrix
         if (this.pendingParticles != null) {
-            drawWithTransform(this.pendingParticles, this.particleTransform);
+            drawWithTransform(this.pendingParticles, this.particleTransform, "isometric-renders particles");
             this.pendingParticles = null;
         }
 
         if (this.pendingDebugOverlays != null) {
-            drawWithTransform(this.pendingDebugOverlays, this.debugOverlayTransform);
+            drawWithTransform(this.pendingDebugOverlays, this.debugOverlayTransform, "isometric-renders debug overlays");
             this.pendingDebugOverlays = null;
         }
     }
 
-    private static void drawWithTransform(SubmitNodeStorage submits, Matrix4f transform) {
+    private static void drawWithTransform(SubmitNodeStorage submits, Matrix4f transform, String label) {
         final var modelView = RenderSystem.getModelViewStack();
         modelView.pushMatrix();
         modelView.mul(transform);
 
-        Minecraft.getInstance().gameRenderer.featureRenderDispatcher().renderAllFeatures(submits);
+        final var dispatcher = Minecraft.getInstance().gameRenderer.featureRenderDispatcher();
+        try (var frame = dispatcher.prepareFrame(submits);
+             var pass = RenderableDispatcher.createPass(label)) {
+            RenderSystem.bindDefaultUniforms(pass);
+            FeatureRenderDispatcher.renderAllFeatures(pass, frame);
+        }
 
         modelView.popMatrix();
     }
@@ -101,7 +107,7 @@ public abstract class DefaultRenderable<P extends DefaultPropertyBundle> impleme
         ((CameraInvoker) camera).isometric$setRotation(this.cameraYaw(), this.properties().slant.get());
 
         final var cameraState = new CameraRenderState();
-        camera.extractRenderState(cameraState, tickDelta);
+        camera.extractRenderState(cameraState, client.getDeltaTracker());
 
         // ponytail: cull-everything-far-away frustum, particles are restricted to the render's surroundings anyway
         final var frustum = new Frustum(new Matrix4f(), new Matrix4f().setOrtho(-512, 512, -512, 512, -512, 512));

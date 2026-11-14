@@ -73,7 +73,7 @@ public class EntityRenderable extends DefaultRenderable<DefaultPropertyBundle> i
         matrices.pushPose();
 
         matrices.translate(0, -.5 * this.entity.getBbHeight(), 0);
-        matrices.mulPose(Axis.YP.rotationDegrees(180));
+        matrices.rotate(Axis.YP.rotationDegrees(180));
 
         var properties = this.properties();
         this.entity.setYHeadRot(properties.yaw.get());
@@ -104,7 +104,7 @@ public class EntityRenderable extends DefaultRenderable<DefaultPropertyBundle> i
             matrices.popPose();
         });
 
-        matrices.mulPose(Axis.YP.rotationDegrees(-180));
+        matrices.rotate(Axis.YP.rotationDegrees(-180));
         matrices.translate(0, 1.65, 0);
 
         this.renderParticles(matrices, tickDelta);

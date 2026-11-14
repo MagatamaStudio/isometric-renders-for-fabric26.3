@@ -5,9 +5,9 @@ import io.wispforest.owo.ui.component.UIComponents;
 import io.wispforest.owo.ui.container.FlowLayout;
 import io.wispforest.owo.ui.core.*;
 import io.wispforest.owo.ui.util.UISounds;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 
 public class NotificationComponent extends FlowLayout {
 
@@ -23,7 +23,7 @@ public class NotificationComponent extends FlowLayout {
         if (onClick != null) {
             this.cursorStyle(CursorStyle.HAND);
             this.mouseDown().subscribe((click, doubled) -> {
-                if (click.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT) return false;
+                if (click.button() != InputConstants.MOUSE_BUTTON_LEFT) return false;
 
                 onClick.run();
                 UISounds.playInteractionSound();

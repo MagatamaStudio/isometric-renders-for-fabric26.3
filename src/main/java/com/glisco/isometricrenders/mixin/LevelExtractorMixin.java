@@ -15,7 +15,7 @@ public class LevelExtractorMixin {
     // Debug renderers only draw entities the player can currently see,
     // area renders want everything inside the area regardless
     @Inject(method = "isEntityVisible", at = @At("HEAD"), cancellable = true)
-    private void showEntitiesInRenderedArea(Entity entity, Frustum frustum, double camX, double camY, double camZ, CallbackInfoReturnable<Boolean> cir) {
+    private void showEntitiesInRenderedArea(Entity entity, Frustum frustum, double camX, double camY, double camZ, float partialTicks, long chunkFadeDuration, CallbackInfoReturnable<Boolean> cir) {
         final var area = DebugOverlays.collectingArea();
         if (area == null) return;
 

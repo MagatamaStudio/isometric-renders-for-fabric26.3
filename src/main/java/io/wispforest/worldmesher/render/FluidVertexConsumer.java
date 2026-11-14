@@ -44,6 +44,12 @@ public class FluidVertexConsumer implements VertexConsumer {
     }
 
     @Override
+    public VertexConsumer setUv3(float u, float v) {
+        this.delegate.setUv3(u, v);
+        return this;
+    }
+
+    @Override
     public VertexConsumer setUv1(int u, int v) {
         this.delegate.setUv1(u, v);
         return this;

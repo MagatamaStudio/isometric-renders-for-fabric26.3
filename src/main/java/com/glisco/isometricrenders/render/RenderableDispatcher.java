@@ -3,22 +3,26 @@ package com.glisco.isometricrenders.render;
 import com.glisco.isometricrenders.IsometricRenders;
 import com.glisco.isometricrenders.property.GlobalProperties;
 import com.mojang.blaze3d.ProjectionType;
-import com.mojang.blaze3d.buffers.GpuBuffer;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.GpuFormat;
-import com.mojang.blaze3d.textures.GpuTexture;
-import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.renderpearl.api.GpuFormat;
+import com.mojang.renderpearl.api.buffers.GpuBuffer;
+import com.mojang.renderpearl.api.commands.RenderPass;
+import com.mojang.renderpearl.api.textures.GpuTexture;
+import com.mojang.renderpearl.api.textures.GpuTextureView;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.ProjectionMatrixBuffer;
 import net.minecraft.client.renderer.SubmitNodeStorage;
+import net.minecraft.client.renderer.feature.FeatureRenderDispatcher;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.joml.Vector4f;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
@@ -30,6 +34,21 @@ public class RenderableDispatcher {
     // One buffer per nesting level, batch renders draw into images while the preview is drawing
     private static final List<ProjectionMatrixBuffer> PROJECTION_BUFFERS = new ArrayList<>();
     private static int nesting = 0;
+
+    private static GpuTextureView currentColor, currentDepth;
+
+    /**
+     * Opens a render pass on the target currently being drawn into. Everything
+     * that draws outside of the submit system has to go through here
+     */
+    public static RenderPass createPass(String label) {
+        if (currentColor == null) {
+            throw new IllegalStateException("Not drawing into a render target");
+        }
+
+        return RenderSystem.getDevice().createCommandEncoder()
+                .createRenderPass(() -> label, currentColor, Optional.empty(), currentDepth, OptionalDouble.empty());
+    }
 
     /**
      * Renders the given renderable into the given color and depth textures,
@@ -44,11 +63,11 @@ public class RenderableDispatcher {
         if (PROJECTION_BUFFERS.size() <= nesting) PROJECTION_BUFFERS.add(new ProjectionMatrixBuffer("isometric-renders " + nesting));
         final var projectionBuffer = PROJECTION_BUFFERS.get(nesting++);
 
-        final var previousColor = RenderSystem.outputColorTextureOverride;
-        final var previousDepth = RenderSystem.outputDepthTextureOverride;
+        final var previousColor = currentColor;
+        final var previousDepth = currentDepth;
         final var previousLights = RenderSystem.getShaderLights();
-        RenderSystem.outputColorTextureOverride = color;
-        RenderSystem.outputDepthTextureOverride = depth;
+        currentColor = color;
+        currentDepth = depth;
 
         renderable.prepare();
 
@@ -73,7 +92,12 @@ public class RenderableDispatcher {
         // Submit untransformed geometry, then draw it
         final var submits = new SubmitNodeStorage();
         renderable.emitVertices(new PoseStack(), submits, tickDelta);
-        Minecraft.getInstance().gameRenderer.featureRenderDispatcher().renderAllFeatures(submits);
+
+        try (var frame = Minecraft.getInstance().gameRenderer.featureRenderDispatcher().prepareFrame(submits);
+             var pass = createPass("isometric-renders renderable")) {
+            RenderSystem.bindDefaultUniforms(pass);
+            FeatureRenderDispatcher.renderAllFeatures(pass, frame);
+        }
 
         renderable.draw(modelViewStack);
 
@@ -83,8 +107,8 @@ public class RenderableDispatcher {
         renderable.cleanUp();
         RenderSystem.restoreProjectionMatrix();
 
-        RenderSystem.outputColorTextureOverride = previousColor;
-        RenderSystem.outputDepthTextureOverride = previousDepth;
+        currentColor = previousColor;
+        currentDepth = previousDepth;
         if (previousLights != null) RenderSystem.setShaderLights(previousLights);
         nesting--;
     }

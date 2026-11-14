@@ -27,7 +27,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.Identifier;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 @Environment(EnvType.CLIENT)
 public class IsometricRenders implements ClientModInitializer {
@@ -41,7 +41,7 @@ public class IsometricRenders implements ClientModInitializer {
     public static boolean inRenderableTick = false;
     public static boolean skipWorldRender = false;
 
-    public static final KeyMapping SELECT = new KeyMapping("key.isometric-renders.area_select", GLFW.GLFW_KEY_C, KeyMapping.Category.MISC);
+    public static final KeyMapping SELECT = new KeyMapping("key.isometric-renders.area_select", InputConstants.KEY_C, KeyMapping.Category.MISC);
 
     @Override
     public void onInitializeClient() {

@@ -12,6 +12,8 @@ import com.glisco.isometricrenders.util.*;
 import com.glisco.isometricrenders.widget.IOStateComponent;
 import com.glisco.isometricrenders.widget.NotificationComponent;
 import com.glisco.isometricrenders.render.PreviewRenderer;
+import com.mojang.blaze3d.Blaze3D;
+import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -24,10 +26,10 @@ import io.wispforest.owo.ui.core.*;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.jetbrains.annotations.NotNull;
-import org.lwjgl.glfw.GLFW;
 
 import java.awt.GraphicsEnvironment;
 import java.awt.Toolkit;
+import java.net.URI;
 import java.nio.file.Files;
 import java.io.File;
 import java.io.IOException;
@@ -53,18 +55,18 @@ public class RenderScreen extends BaseOwoScreen<FlowLayout> {
     private static final Int2ObjectMap<Consumer<DefaultPropertyBundle>> KEYBOARD_CONTROLS = new Int2ObjectOpenHashMap<>();
 
     static {
-        KEYBOARD_CONTROLS.put(GLFW.GLFW_KEY_W, properties -> properties.yOffset.modify(-1000));
-        KEYBOARD_CONTROLS.put(GLFW.GLFW_KEY_S, properties -> properties.yOffset.modify(1000));
-        KEYBOARD_CONTROLS.put(GLFW.GLFW_KEY_D, properties -> properties.xOffset.modify(1000));
-        KEYBOARD_CONTROLS.put(GLFW.GLFW_KEY_A, properties -> properties.xOffset.modify(-1000));
+        KEYBOARD_CONTROLS.put(InputConstants.KEY_W, properties -> properties.yOffset.modify(-1000));
+        KEYBOARD_CONTROLS.put(InputConstants.KEY_S, properties -> properties.yOffset.modify(1000));
+        KEYBOARD_CONTROLS.put(InputConstants.KEY_D, properties -> properties.xOffset.modify(1000));
+        KEYBOARD_CONTROLS.put(InputConstants.KEY_A, properties -> properties.xOffset.modify(-1000));
 
-        KEYBOARD_CONTROLS.put(GLFW.GLFW_KEY_UP, properties -> properties.slant.modify(-5));
-        KEYBOARD_CONTROLS.put(GLFW.GLFW_KEY_DOWN, properties -> properties.slant.modify(5));
-        KEYBOARD_CONTROLS.put(GLFW.GLFW_KEY_LEFT, properties -> properties.rotation.modify(-10));
-        KEYBOARD_CONTROLS.put(GLFW.GLFW_KEY_RIGHT, properties -> properties.rotation.modify(10));
+        KEYBOARD_CONTROLS.put(InputConstants.KEY_UP, properties -> properties.slant.modify(-5));
+        KEYBOARD_CONTROLS.put(InputConstants.KEY_DOWN, properties -> properties.slant.modify(5));
+        KEYBOARD_CONTROLS.put(InputConstants.KEY_LEFT, properties -> properties.rotation.modify(-10));
+        KEYBOARD_CONTROLS.put(InputConstants.KEY_RIGHT, properties -> properties.rotation.modify(10));
 
-        KEYBOARD_CONTROLS.put(GLFW.GLFW_KEY_RIGHT_BRACKET, properties -> properties.scale.modify(10));
-        KEYBOARD_CONTROLS.put(GLFW.GLFW_KEY_SLASH, properties -> properties.scale.modify(-10));
+        KEYBOARD_CONTROLS.put(InputConstants.KEY_RBRACKET, properties -> properties.scale.modify(10));
+        KEYBOARD_CONTROLS.put(InputConstants.KEY_SLASH, properties -> properties.scale.modify(-10));
     }
 
     private final MemoryGuard memoryGuard = new MemoryGuard(0.75f);
@@ -197,7 +199,7 @@ public class RenderScreen extends BaseOwoScreen<FlowLayout> {
             builder.row.child(exportButton.horizontalSizing(Sizing.fixed(75)));
 
             builder.row.child(UIComponents.button(Translate.gui("open_folder"), button -> {
-                Util.getPlatform().openFile(this.renderable.exportPath().resolveOffset().toFile());
+                Blaze3D.openPath(this.renderable.exportPath().resolveOffset());
             }).horizontalSizing(Sizing.fixed(75)).margins(Insets.left(5)));
         }
 
@@ -301,11 +303,11 @@ public class RenderScreen extends BaseOwoScreen<FlowLayout> {
                     .mouseDown().subscribe((click, doubled) -> {
                         this.minecraft.gui.setScreen(new ConfirmLinkScreen(confirmed -> {
                             if (confirmed) {
-                                Util.getPlatform().openUri("https://ffmpeg.org/download.html");
+                                Blaze3D.openUri(URI.create("https://ffmpeg.org/download.html"));
                             }
 
                             this.minecraft.gui.setScreen(this);
-                        }, "https://ffmpeg.org/download.html", true));
+                        }, URI.create("https://ffmpeg.org/download.html"), true));
                         return true;
                     });
             }
@@ -348,7 +350,7 @@ public class RenderScreen extends BaseOwoScreen<FlowLayout> {
 
                     exportCallback.accept(file);
                     this.minecraft.execute(() -> this.notify(
-                        () -> Util.getPlatform().openFile(file),
+                        () -> Blaze3D.openPath(file.toPath()),
                         Translate.gui("exported_as"),
                         Component.literal(ExportPathSpec.exportRoot().relativize(file.toPath()).toString())
                     ));
@@ -430,7 +432,7 @@ public class RenderScreen extends BaseOwoScreen<FlowLayout> {
 
                 if (animationThrowable != null) return;
                 this.notify(
-                    () -> Util.getPlatform().openFile(animationFile),
+                    () -> Blaze3D.openPath(animationFile.toPath()),
                     Translate.gui("animation_saved"),
                     Component.literal(ExportPathSpec.exportRoot().relativize(animationFile.toPath()).toString())
                 );
@@ -469,17 +471,17 @@ public class RenderScreen extends BaseOwoScreen<FlowLayout> {
 
         if (this.isInViewport(event.x())) {
             final int button = event.button();
-            if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
+            if (button == InputConstants.MOUSE_BUTTON_MIDDLE) {
                 double xScaling = (100d / properties.scale.get()) * (this.minecraft.getWindow().getScreenWidth() / (float) this.minecraft.getWindow().getGuiScaledWidth());
                 double yScaling = (100d / properties.scale.get()) * (this.minecraft.getWindow().getScreenHeight() / (float) this.minecraft.getWindow().getGuiScaledHeight());
 
                 properties.xOffset.modify((int) (50 * deltaX * xScaling));
                 properties.yOffset.modify((int) (50 * deltaY * yScaling));
                 return true;
-            } else if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            } else if (button == InputConstants.MOUSE_BUTTON_LEFT) {
                 properties.rotation.modify((int) (deltaX * 2));
                 return true;
-            } else if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            } else if (button == InputConstants.MOUSE_BUTTON_RIGHT) {
                 properties.slant.modify((int) (deltaY * 2));
                 return true;
             }
@@ -494,12 +496,12 @@ public class RenderScreen extends BaseOwoScreen<FlowLayout> {
 
         if (this.isInViewport(event.x()) && this.minecraft.hasControlDown()) {
             final int button = event.button();
-            if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
+            if (button == InputConstants.MOUSE_BUTTON_MIDDLE) {
                 properties.xOffset.setToDefault();
                 properties.yOffset.setToDefault();
-            } else if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            } else if (button == InputConstants.MOUSE_BUTTON_LEFT) {
                 properties.rotation.setToDefault();
-            } else if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            } else if (button == InputConstants.MOUSE_BUTTON_RIGHT) {
                 properties.slant.setToDefault();
             }
             return true;
@@ -527,9 +529,9 @@ public class RenderScreen extends BaseOwoScreen<FlowLayout> {
         if (super.keyPressed(event)) return true;
 
         final int keyCode = event.key();
-        if (keyCode == GLFW.GLFW_KEY_F12) {
+        if (keyCode == InputConstants.KEY_F12) {
             this.captureScheduled = true;
-        } else if (keyCode == GLFW.GLFW_KEY_F10) {
+        } else if (keyCode == InputConstants.KEY_F10) {
             this.drawOnlyBackground = !this.drawOnlyBackground;
         } else if (KEYBOARD_CONTROLS.containsKey(keyCode) && this.renderable instanceof DefaultRenderable) {
             KEYBOARD_CONTROLS.get(keyCode).accept((DefaultPropertyBundle) this.renderable.properties());

@@ -42,7 +42,7 @@ public class TooltipRenderable extends DefaultRenderable<TooltipRenderable.Toolt
 
         final int x = -width / 2, y = -height / 2;
 
-        collector.submitCustomGeometry(matrices, RenderTypes.textBackground(), (pose, buffer) -> {
+        collector.submitCustomGeometry(matrices, RenderTypes.debugQuads(), (pose, buffer) -> {
             final int background = 0xF0100010, borderStart = 0x505000FF, borderEnd = 0x5028007F;
 
             quad(pose, buffer, x - 3, y - 4, x + width + 3, y - 3, background, background);
@@ -65,10 +65,10 @@ public class TooltipRenderable extends DefaultRenderable<TooltipRenderable.Toolt
     }
 
     private static void quad(PoseStack.Pose pose, VertexConsumer buffer, int x0, int y0, int x1, int y1, int topColor, int bottomColor) {
-        buffer.addVertex(pose, x0, y0, 0).setColor(topColor).setLight(LightCoordsUtil.FULL_BRIGHT);
-        buffer.addVertex(pose, x0, y1, 0).setColor(bottomColor).setLight(LightCoordsUtil.FULL_BRIGHT);
-        buffer.addVertex(pose, x1, y1, 0).setColor(bottomColor).setLight(LightCoordsUtil.FULL_BRIGHT);
-        buffer.addVertex(pose, x1, y0, 0).setColor(topColor).setLight(LightCoordsUtil.FULL_BRIGHT);
+        buffer.addVertex(pose, x0, y0, 0).setColor(topColor);
+        buffer.addVertex(pose, x0, y1, 0).setColor(bottomColor);
+        buffer.addVertex(pose, x1, y1, 0).setColor(bottomColor);
+        buffer.addVertex(pose, x1, y0, 0).setColor(topColor);
     }
 
     @Override

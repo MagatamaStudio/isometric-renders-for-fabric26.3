@@ -80,7 +80,7 @@ public final class DebugOverlays {
         final var storage = clip ? new ClippingStorage(area.inflate(1e-3)) : new SubmitNodeStorage();
         try {
             final var levelState = new LevelRenderState();
-            camera.extractRenderState(levelState.cameraRenderState, tickDelta);
+            camera.extractRenderState(levelState.cameraRenderState, client.getDeltaTracker());
 
             submitDebugRenderers(client, levelState.cameraRenderState, origin, area, liveEntities, frozenEntities, tickDelta, storage);
             if (CARPET_LOADED) CarpetShapes.submit(storage, levelState, tickDelta);

@@ -7,7 +7,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -28,7 +28,7 @@ public abstract class HandledScreenMixin<T extends AbstractContainerMenu> extend
 
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     public void renderInventory(KeyEvent event, CallbackInfoReturnable<Boolean> cir) {
-        if (event.key() != GLFW.GLFW_KEY_F12 || !this.minecraft.hasControlDown()) return;
+        if (event.key() != InputConstants.KEY_F12 || !this.minecraft.hasControlDown()) return;
 
         this.onClose();
         this.minecraft.gui.setScreen(new SelectRenderTaskScreen(this.menu.slots.stream().map(Slot::getItem).filter(stack -> !stack.isEmpty()).toList()));
